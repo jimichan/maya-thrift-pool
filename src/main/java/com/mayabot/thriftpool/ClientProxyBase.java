@@ -1,5 +1,6 @@
 package com.mayabot.thriftpool;
 
+import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.thrift.TServiceClient;
@@ -20,18 +21,22 @@ public abstract class ClientProxyBase {
 	protected ServerList serverList;
 	protected TProtocolFactory protocolProvider;
 	protected org.apache.thrift.TServiceClientFactory<?> clientFactory;
-	
-	protected LoadingCache<TTransport, TServiceClient> clientCache = 
-	CacheBuilder.newBuilder()
-	.expireAfterWrite(3, TimeUnit.MINUTES)
-	.build(new CacheLoader<TTransport, TServiceClient>(){
-		@Override
-		public TServiceClient load(TTransport transport) throws Exception {
-			TServiceClient client = clientFactory.getClient(protocolProvider.getProtocol(transport));
-			return client;
-		}
-	});
-	
+
+	protected LoadingCache<TTransport, TServiceClient> clientCache = CacheBuilder
+			.newBuilder().expireAfterWrite(3, TimeUnit.MINUTES)
+			.build(new CacheLoader<TTransport, TServiceClient>() {
+				@Override
+				public TServiceClient load(TTransport transport)
+						throws Exception {
+					TServiceClient client = clientFactory
+							.getClient(protocolProvider.getProtocol(transport));
+					return client;
+				}
+			});
+
+	private Method pingMethod;
+	private long lastPingtime;
+
 	public void init(ThriftConnectionPool connectionPool,
 			ServerList serverList, TProtocolFactory protocolProvider,
 			TServiceClientFactory<?> clientFactory) {
@@ -39,21 +44,36 @@ public abstract class ClientProxyBase {
 		this.serverList = serverList;
 		this.protocolProvider = protocolProvider;
 		this.clientFactory = clientFactory;
+
+		try {
+			// public boolean ping();
+			Object client = clientFactory.getClient(null);
+			Method m = client.getClass().getMethod("ping", null);
+			if (m != null && m.isAccessible()
+					&& m.getReturnType().equals(Boolean.TYPE)) {
+				pingMethod = m;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
-	
-	
-	
+
+	private byte hasPingMethod = 0;// 0未知 1没有 2有
+
 	public Tuple tryGetConnection() {
 		try {
 			ThriftServerAddress server = serverList.nextServer();
-			TTransport t = connectionPool.getConnection(server);
-			return new Tuple(t, server);
+			TTransport transport = connectionPool.getConnection(server);
+
+			
+
+			return new Tuple(transport, server);
 		} catch (Exception e) {
 			// retry n-1 times
 			int size = serverList.size() - 1;
 
 			if (size >= 1) {
-				
+
 				for (int i = 0; i < size; i++) {
 					try {
 						ThriftServerAddress server = serverList.nextServer();
@@ -62,10 +82,10 @@ public abstract class ClientProxyBase {
 					} catch (Exception e1) {
 					}
 				}
-				
+
 				throw new RuntimeException(e);
-				
-			}else{
+
+			} else {
 				throw new RuntimeException(e);
 			}
 		}
