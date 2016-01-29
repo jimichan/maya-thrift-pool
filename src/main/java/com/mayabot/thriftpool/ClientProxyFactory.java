@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.thrift.TServiceClientFactory;
+import org.apache.thrift.protocol.TProtocolFactory;
 
 import com.mayabot.thriftpool.connpool.ServerList;
 import com.mayabot.thriftpool.connpool.ThriftConnectionPool;
@@ -32,7 +33,7 @@ public class ClientProxyFactory {
 	 */
 	public static <F> F makeClient(Class<F> ifaceClass,TServiceClientFactory<?> clientFactory, String hosts,
 			ThriftConnectionPool pool, 
-			TProtocolProvider protocolProvider,
+			TProtocolFactory protocolProvider,
 			TransportProvider transportProvider) {
 		try {
 

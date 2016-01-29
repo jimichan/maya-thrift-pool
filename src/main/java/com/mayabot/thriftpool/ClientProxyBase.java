@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.thrift.TServiceClient;
 import org.apache.thrift.TServiceClientFactory;
-import org.apache.thrift.scheme.TupleScheme;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
 
 import com.google.common.cache.CacheBuilder;
@@ -18,10 +18,8 @@ public abstract class ClientProxyBase {
 
 	protected ThriftConnectionPool connectionPool;
 	protected ServerList serverList;
-	protected TProtocolProvider protocolProvider;
+	protected TProtocolFactory protocolProvider;
 	protected org.apache.thrift.TServiceClientFactory<?> clientFactory;
-	
-	
 	
 	protected LoadingCache<TTransport, TServiceClient> clientCache = 
 	CacheBuilder.newBuilder()
@@ -29,13 +27,13 @@ public abstract class ClientProxyBase {
 	.build(new CacheLoader<TTransport, TServiceClient>(){
 		@Override
 		public TServiceClient load(TTransport transport) throws Exception {
-			TServiceClient client = clientFactory.getClient(protocolProvider.get(transport));
+			TServiceClient client = clientFactory.getClient(protocolProvider.getProtocol(transport));
 			return client;
 		}
 	});
 	
 	public void init(ThriftConnectionPool connectionPool,
-			ServerList serverList, TProtocolProvider protocolProvider,
+			ServerList serverList, TProtocolFactory protocolProvider,
 			TServiceClientFactory<?> clientFactory) {
 		this.connectionPool = connectionPool;
 		this.serverList = serverList;
@@ -98,11 +96,11 @@ public abstract class ClientProxyBase {
 		this.clientFactory = clientFactory;
 	}
 
-	public TProtocolProvider getProtocolProvider() {
+	public TProtocolFactory getProtocolProvider() {
 		return protocolProvider;
 	}
 
-	public void setProtocolProvider(TProtocolProvider protocolProvider) {
+	public void setProtocolProvider(TProtocolFactory protocolProvider) {
 		this.protocolProvider = protocolProvider;
 	}
 }
